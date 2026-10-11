@@ -109,19 +109,18 @@ curl -s http://localhost:8080/actuator/health/readiness
 - Корзина очищается после успешного создания; idempotency хранится в PostgreSQL (`ordering.idempotency_records`, TTL 24h)
 - Остаток **проверяется** по PG, **резерв** — позже через `catalog.events`
 
-## Kafka — order.events (шаг 4)
+## Kafka — payment flow (шаг 4–5)
 
-| | |
-|--|--|
-| **Топик** | `order.events` |
-| **Producer** | `OutboxPublisher` (polling `ordering.outbox`) |
-| **Consumer** | пока нет (mock payment — шаг 5) |
-| **Outbox** | да — `OrderCreated` в одной транзакции с заказом |
-| **Контракт** | `common-events`: `eventId`, `occurredAt`, `eventType`, JSON payload |
+| Топик | Producer | Consumer |
+|-------|----------|----------|
+| `order.events` | Outbox: `OrderCreated`, `OrderPaid` | `OrderCreatedPaymentConsumer` |
+| `payment.events` | `OrderCreatedPaymentConsumer`, `MockPaymentGatewayConsumer` | `MockPaymentGatewayConsumer`, `OrderPaymentResultConsumer` |
+
+Идempotency: `ordering.processed_events` (`consumer_name`, `event_id`).
 
 ## Чего ещё нет
 
-- Mock payment consumers
+- Saga отмены
 - Таблица outbox и публикация в топики
 - Mock payment, saga отмены, notification-service
 - JWT и rate limit

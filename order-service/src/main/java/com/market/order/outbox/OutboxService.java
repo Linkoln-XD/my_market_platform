@@ -6,6 +6,8 @@ import com.market.events.order.OrderCreatedEvent;
 import com.market.events.order.OrderCreatedPayload;
 import com.market.events.order.OrderEventTypes;
 import com.market.events.order.OrderLinePayload;
+import com.market.events.order.OrderPaidEvent;
+import com.market.events.order.OrderPaidPayload;
 import com.market.events.topics.OrderTopics;
 import com.market.order.order.domain.OrderEntity;
 import com.market.order.order.domain.OrderItemEntity;
@@ -48,6 +50,31 @@ public class OutboxService {
         row.setAggregateType(AGGREGATE_ORDER);
         row.setAggregateId(order.getId());
         row.setEventType(OrderEventTypes.ORDER_CREATED);
+        row.setTopic(OrderTopics.ORDER_EVENTS);
+        row.setEventId(eventId);
+        row.setOccurredAt(occurredAt);
+        row.setPayload(writeJson(event));
+        outboxEventRepository.save(row);
+    }
+
+    public void enqueueOrderPaid(OrderEntity order, UUID paymentId, long amountCents) {
+        UUID eventId = UUID.randomUUID();
+        Instant occurredAt = Instant.now();
+
+        OrderPaidPayload payload = new OrderPaidPayload(
+                order.getId(),
+                paymentId,
+                amountCents,
+                order.getCurrency(),
+                order.getStatus().name());
+
+        OrderPaidEvent event = new OrderPaidEvent(
+                eventId, occurredAt, OrderEventTypes.ORDER_PAID, payload);
+
+        OutboxEventEntity row = new OutboxEventEntity();
+        row.setAggregateType(AGGREGATE_ORDER);
+        row.setAggregateId(order.getId());
+        row.setEventType(OrderEventTypes.ORDER_PAID);
         row.setTopic(OrderTopics.ORDER_EVENTS);
         row.setEventId(eventId);
         row.setOccurredAt(occurredAt);
