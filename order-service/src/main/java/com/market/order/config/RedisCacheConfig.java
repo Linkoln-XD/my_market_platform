@@ -15,8 +15,10 @@ public class RedisCacheConfig {
 
     @Bean
     RedisCacheManagerBuilderCustomizer catalogRedisCacheCustomizer(ObjectMapper objectMapper) {
-        GenericJackson2JsonRedisSerializer serializer =
-                new GenericJackson2JsonRedisSerializer(objectMapper.copy());
+        GenericJackson2JsonRedisSerializer serializer = GenericJackson2JsonRedisSerializer.builder()
+                .objectMapper(objectMapper.copy())
+                .defaultTyping(true)
+                .build();
         RedisCacheConfiguration defaults = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(5))
                 .disableCachingNullValues()

@@ -66,6 +66,10 @@ info:
     description: Event-driven order platform. Order lifecycle is published to Kafka.
 
 market:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:3000
   cart:
     redis-key-prefix: cart
     ttl: 7d

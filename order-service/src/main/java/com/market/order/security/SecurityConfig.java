@@ -46,14 +46,24 @@ public class SecurityConfig {
                                 "/actuator/info",
                                 "/actuator/prometheus",
                                 "/actuator/metrics",
-                                "/actuator/metrics/**")
+                                "/actuator/metrics/**",
+                                "/error")
                                 .permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/categories/**", "/api/v1/products/**").permitAll()
                         .requestMatchers("/api/v1/carts/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/categories/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/categories", "/api/v1/categories/**")
+                                .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products", "/api/v1/products/**")
+                                .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("ADMIN")
+                        .requestMatchers(
+                                "/api/v1/categories",
+                                "/api/v1/categories/**",
+                                "/api/v1/products",
+                                "/api/v1/products/**")
+                                .permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/orders", "/api/v1/orders/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/orders", "/api/v1/orders/**").authenticated()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

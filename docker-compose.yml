@@ -45,6 +45,15 @@ services:
       retries: 18
       start_period: 20s
 
+  demo-ui:
+    profiles: ["demo"]
+    build: ./frontend
+    container_name: market-demo-ui
+    ports:
+      - "3000:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   prometheus:
     profiles: ["observability"]
     image: prom/prometheus:v3.2.1

@@ -44,6 +44,10 @@ management:
       show-details: always
 
 market:
+  security:
+    jwt:
+      issuer: market-platform
+      secret: ${JWT_SECRET:change-me-local-demo-secret-min-32-chars!!}
   notification:
     dlq-topic: order.events.dlq
     consumer-name: notification-order-events

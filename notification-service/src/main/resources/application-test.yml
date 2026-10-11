@@ -1,3 +1,9 @@
 spring:
   main:
     banner-mode: off
+
+market:
+  security:
+    jwt:
+      issuer: market-platform-test
+      secret: test-jwt-secret-at-least-32-characters-long

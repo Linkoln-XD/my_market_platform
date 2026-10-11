@@ -3,8 +3,11 @@ package com.market.order.order.web;
 import com.market.order.order.dto.CancelOrderRequest;
 import com.market.order.order.dto.CreateOrderRequest;
 import com.market.order.order.dto.OrderResponse;
+import com.market.order.order.dto.OrderPageResponse;
 import com.market.order.order.service.OrderCancelService;
+import com.market.order.order.service.OrderQueryService;
 import com.market.order.order.service.OrderService;
+import com.market.order.security.JwtAuthorityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -19,6 +22,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,6 +44,21 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderCancelService orderCancelService;
+    private final OrderQueryService orderQueryService;
+
+    @GetMapping
+    @Operation(summary = "List current user's orders")
+    public OrderPageResponse listMyOrders(
+            @AuthenticationPrincipal Jwt jwt,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        return orderQueryService.listForOwner(jwt.getSubject(), pageable);
+    }
+
+    @GetMapping("/{orderId}")
+    @Operation(summary = "Get order by id (owner or ADMIN)")
+    public OrderResponse getOrder(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
+        return orderQueryService.getOrder(orderId, jwt.getSubject(), JwtAuthorityUtils.hasAdminRole(jwt));
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

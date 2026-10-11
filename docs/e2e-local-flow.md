@@ -14,19 +14,33 @@ JDK 21, переменные — `.env.example` (`JWT_SECRET`, `KAFKA_BOOTSTRAP_
 
 ## 2. Сборка и запуск приложений
 
+```bash
+./mvnw -pl order-service -am -DskipTests install
+./mvnw -pl notification-service -am -DskipTests install
+```
+
 Терминал A — order-service:
 
 ```bash
-./mvnw -pl order-service -am -DskipTests install
 ./mvnw -pl order-service spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 Терминал B — notification-service:
 
 ```bash
-./mvnw -pl notification-service -am -DskipTests install
 ./mvnw -pl notification-service spring-boot:run -Dspring-boot.run.profiles=local
 ```
+
+Не используйте `-am` вместе с `spring-boot:run` от корня репозитория — parent POM не имеет main class.
+
+Опционально — jar:
+
+```bash
+java -jar order-service/target/order-service-0.1.0-SNAPSHOT.jar --spring.profiles.active=local
+java -jar notification-service/target/notification-service-0.1.0-SNAPSHOT.jar --spring.profiles.active=local
+```
+
+Опционально — UI: [demo-ui.md](demo-ui.md) (Vite `:5173` или Compose profile `demo` → `:3000`).
 
 Readiness:
 
@@ -73,7 +87,27 @@ curl -s -X POST http://localhost:8080/api/v1/orders \
   -d '{"ownerId":"e2e-user"}' | jq .
 ```
 
-Статус заказа: **PENDING_PAYMENT**. В логах order-service — outbox publish; mock payment переводит заказ в **PAID** (обычно несколько секунд).
+Сохраните `id` заказа из ответа. Статус: **PENDING_PAYMENT**. Mock payment через Kafka переводит заказ в **PAID** (обычно несколько секунд).
+
+Polling через API (тот же JWT):
+
+```bash
+export ORDER_ID=<uuid-from-response>
+curl -s "http://localhost:8080/api/v1/orders/$ORDER_ID" \
+  -H "Authorization: Bearer $TOKEN" | jq '{id,status,totalCents}'
+```
+
+Admin-токен (опционально, все заказы):
+
+```bash
+export ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/demo-token \
+  -H 'Content-Type: application/json' \
+  -d '{"subject":"admin","roles":["ADMIN"]}' | jq -r .accessToken)
+curl -s 'http://localhost:8080/api/v1/admin/orders?size=5' \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
+curl -s 'http://localhost:8081/api/v1/admin/notifications?size=5' \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
+```
 
 Проверка статуса в БД:
 
@@ -130,3 +164,16 @@ curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER_ID/cancel" \
 ```
 
 Testcontainers: Postgres, Redis, Kafka; IT покрывают API, outbox, payment, cancel saga, security, notification, Prometheus.
+
+## 10. Остановка
+
+```bash
+# Ctrl+C в терминалах order-service и notification-service
+lsof -ti :8080,:8081 | xargs kill 2>/dev/null || true
+docker compose --profile demo stop demo-ui 2>/dev/null || true
+docker compose down
+```
+
+## 11. Каталог не открывается (401 / 500)
+
+См. [demo-ui.md#устранение-неполадок](demo-ui.md#устранение-неполадок): часто помогает `docker exec market-redis redis-cli FLUSHDB` после смены формата Redis-кэша каталога.

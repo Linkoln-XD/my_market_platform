@@ -57,31 +57,82 @@ Deployable: **`order-service`** (8080), **`notification-service`** (8081). Ко�
 
 ## Локальный запуск
 
+### 1. Инфраструктура (Compose)
+
 ```bash
 docker compose up -d
+```
+
+Postgres **5432**, Redis **6379**, Kafka **9092**. Переменные — `.env.example` (можно скопировать в `.env`; файл в git не коммитится).
+
+### 2. Backend на хосте
+
+Сборка (один раз или после изменений Java):
+
+```bash
 ./mvnw -pl order-service -am -DskipTests install
+./mvnw -pl notification-service -am -DskipTests install
+```
+
+**Терминал A — order-service (8080):**
+
+```bash
 ./mvnw -pl order-service spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Notification (второй терминал, тот же Compose):
+**Терминал B — notification-service (8081):**
 
 ```bash
-./mvnw -pl notification-service -am -DskipTests install
 ./mvnw -pl notification-service spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Проверка order-service:
+Важно: для `spring-boot:run` указывайте **только** `-pl order-service` или `-pl notification-service`. Флаг `-am` на `spring-boot:run` с корневого POM пытается запустить parent без main class.
+
+Альтернатива — fat jar:
 
 ```bash
-curl -s http://localhost:8080/actuator/health
-curl -s http://localhost:8080/actuator/health/readiness
+./mvnw -pl order-service -am -DskipTests package
+java -jar order-service/target/order-service-0.1.0-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
-Ожидание: `status` = `UP`, в `components` есть `db`, `redis`, `kafka` со статусом `UP`.
+### 3. Проверка readiness
 
-Остановка приложения: Ctrl+C. Остановка инфраструктуры: `docker compose down`.
+```bash
+curl -s http://localhost:8080/actuator/health/readiness
+curl -s http://localhost:8081/actuator/health/readiness
+curl -s 'http://localhost:8080/api/v1/products?size=1' | head -c 120
+```
 
-Переменные окружения — в `.env.example`. Файл `.env` в git не коммитится. Значения по умолчанию совпадают с Compose.
+Ожидание: `db`, `redis`, `kafka` — **UP** (order); каталог — JSON с `content`, не **401** / **500**.
+
+### 4. Demo UI (опционально)
+
+- **Vite (dev):** `cd frontend && npm install && npm run dev` → http://localhost:5173  
+- **Docker (nginx):** backend на **хосте** 8080/8081, затем  
+  `docker compose --profile demo up -d --build demo-ui` → http://localhost:3000  
+
+Подробнее: [docs/demo-ui.md](docs/demo-ui.md).
+
+### Остановка
+
+| Что | Команда |
+|-----|---------|
+| Java-приложения | Ctrl+C в терминалах или `lsof -ti :8080,:8081 \| xargs kill` |
+| UI в Docker | `docker compose --profile demo stop demo-ui` |
+| Вся инфра Compose | `docker compose down` (volume Postgres сохраняется) |
+| UI + инфра | `docker compose --profile demo down` |
+
+Полный сценарий checkout и отмены: [docs/e2e-local-flow.md](docs/e2e-local-flow.md).
+
+### Если каталог отвечает 401 или 500
+
+Часто это не security, а **500 на `/api/v1/products`** (Redis-кэш каталога после смены сериализации). Сброс кэша:
+
+```bash
+docker exec market-redis redis-cli FLUSHDB
+```
+
+Затем снова `curl` каталога. Подробнее — [docs/demo-ui.md](docs/demo-ui.md#устранение-неполадок).
 
 ## Тесты
 
@@ -110,12 +161,22 @@ curl -s http://localhost:8080/actuator/health/readiness
 
 Данные в Redis (`market.cart.ttl`, по умолчанию 7 дней). Остаток проверяется по PostgreSQL (не по cache каталога).
 
-## Orders API (шаг 3)
+## Orders API (шаг 3+)
 
-- `POST /api/v1/orders` — body `{ "ownerId": "..." }`, header **`Idempotency-Key`** (8–128 символов)
-- Статус заказа: **`PENDING_PAYMENT`** (оплата только через Kafka, шаг 4+)
-- Корзина очищается после успешного создания; idempotency хранится в PostgreSQL (`ordering.idempotency_records`, TTL 24h)
-- Остаток **проверяется** по PG, **резерв** — позже через `catalog.events`
+- `POST /api/v1/orders` — body `{ "ownerId": "..." }`, header **`Idempotency-Key`** (8–128 символов), **JWT**
+- `GET /api/v1/orders` — список заказов текущего пользователя (`sub` токена), пагинация
+- `GET /api/v1/orders/{id}` — заказ по id (только владелец)
+- `POST /api/v1/orders/{id}/cancel` — отмена (JWT, владелец)
+- Статус после создания: **`PENDING_PAYMENT`**; mock payment через Kafka → **`PAID`**
+- Корзина очищается после успешного создания; idempotency — `ordering.idempotency_records` (TTL 24h)
+- Остаток **проверяется** по PG; **резерв** — через `catalog.events`
+
+### Admin (JWT role ADMIN)
+
+| Endpoint | Сервис | Описание |
+|----------|--------|----------|
+| `GET /api/v1/admin/orders` | order **8080** | Все заказы, фильтр `?status=PAID` |
+| `GET /api/v1/admin/notifications` | notification **8081** | Журнал доставленных уведомлений |
 
 ## Kafka — payment flow (шаг 4–5)
 
@@ -148,7 +209,8 @@ curl -s http://localhost:8080/actuator/health/readiness
 
 - **JWT** (HS256): `Authorization: Bearer …`
 - **Demo token** (local/test): `POST /api/v1/auth/demo-token` — body `{ "subject": "user-1", "roles": ["USER"] }` (для админ-записей в каталог — `["ADMIN"]`)
-- **Публично**: GET `/api/v1/categories`, `/api/v1/products`, корзина
+- **Публично**: GET `/api/v1/categories`, `/api/v1/products` (включая list без trailing slash), корзина
+- **CORS** (для SPA): `http://localhost:5173`, `http://localhost:3000` — `market.cors.allowed-origins`
 - **Заказы**: JWT обязателен; `ownerId` в `POST /api/v1/orders` должен совпадать с `subject` токена
 - **Rate limit**: Redis на создание заказа (по умолчанию **30/min** на пользователя) → **429**
 - Секрет: `JWT_SECRET` в `.env` (см. `.env.example`)
@@ -165,6 +227,17 @@ curl -s -X POST http://localhost:8080/api/v1/orders \
   -H 'Content-Type: application/json' \
   -d '{"ownerId":"demo-user"}'
 ```
+
+## Demo UI (SPA)
+
+React + Vite в **`frontend/`**: каталог, корзина, checkout, страница заказа (polling до **PAID**), admin — stock, заказы, notifications.
+
+| Режим | URL | Когда |
+|-------|-----|--------|
+| `npm run dev` | http://localhost:5173 | Node.js на машине, hot reload |
+| Compose `demo` | http://localhost:3000 | Только Docker; API на **хосте** 8080/8081 |
+
+Подробнее: [docs/demo-ui.md](docs/demo-ui.md).
 
 ## Observability (шаг 9)
 

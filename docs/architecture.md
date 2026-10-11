@@ -18,7 +18,8 @@ Maven multi-module, Java 21, Spring Boot 3.5.16.
 |--------|-------------|----------------|
 | `common-events` | Общий jar контрактов Kafka. Типы событий — с шага 4 | Контракты растут вместе с топиками |
 | `order-service` | Единственный deployable: каталог, корзина, заказ, outbox, saga, mock payment | Mock payment остаётся здесь |
-| `notification-service` | Есть (8081) | Consumer только `order.events`, схема `notification`, DLQ `order.events.dlq` |
+| `notification-service` | Deployable (8081) | Consumer `order.events`, admin `GET /api/v1/admin/notifications`, DLQ `order.events.dlq` |
+| `frontend/` | Demo SPA (не Maven-модуль) | Vite + React; опционально nginx в Compose profile `demo` |
 
 Каталог хранится в `order-service` (схема `catalog`). Это одна БД и один процесс, но граница резерва stock — Kafka consumer, а не вызов метода и не `@EventListener`.
 
@@ -35,8 +36,6 @@ Apache Kafka **3.9.2**, режим **KRaft**, образ `apache/kafka:3.9.2`. Z
 Профиль `local` ходит в брокер из Compose. Профиль `test` поднимает Kafka через Testcontainers. In-memory замены нет. Spring Boot 3.5 сам не регистрирует health contributor Kafka, а `KafkaAdmin` с `fail-fast` проверяет брокер только при создании топиков. Поэтому `KafkaHealthIndicator` описывает кластер на старте и на каждом probe: нет брокера — процесс не стартует, readiness остаётся DOWN.
 
 ## Топики
-
-Пока только контракт. Продюсеров и consumer-ов бизнес-потока ещё нет (шаг 4+).
 
 | Топик | Кто публикует | Кто читает |
 |-------|----------------|------------|
@@ -74,8 +73,9 @@ Optimistic locking на stock живёт в catalog consumer, не в синхр
 
 - **JWT resource server** (HS256, issuer `market.security.jwt.issuer`).
 - **Demo issuer**: `POST /api/v1/auth/demo-token` (local/test, `market.security.demo-token.enabled`).
-- **Публично**: GET каталог, все операции корзины, health, OpenAPI.
-- **Authenticated**: `POST/PUT` каталог — роль **ADMIN**; `POST /api/v1/orders` и cancel — любой JWT; `ownerId` в body = `sub` токена.
+- **Публично**: GET каталог (list и by id), все операции корзины, health, OpenAPI, `/error` (иначе 500 маскируется под 401).
+- **Authenticated**: `GET/POST` заказы (список и by id — владелец); `POST/PUT` каталог — **ADMIN**; `GET /api/v1/admin/orders` — **ADMIN**; `GET /api/v1/admin/notifications` на notification-service — **ADMIN**.
+- **CORS**: SPA origins `5173`, `3000`.
 - **Rate limit**: Redis, `POST /api/v1/orders` — `market.security.rate-limit.*` (по умолчанию 30/min на subject).
 
 ## Observability (шаг 9)
@@ -86,6 +86,12 @@ Optimistic locking на stock живёт в catalog consumer, не в синхр
 - **Логи**: `logback-spring.xml`, поля `[req:… evt:…]` в консоли.
 - **Prometheus в Compose**: профиль `observability`, конфиг `infra/prometheus/prometheus.yml` (scrape `host.docker.internal:8080/8081`).
 - **E2E сценарий**: [e2e-local-flow.md](e2e-local-flow.md).
+
+## Demo UI
+
+SPA в `frontend/`: прокси `/api` → order-service, `/notification-api` → notification-service. Не участвует в `./mvnw verify`; сборка — `npm` или `frontend/Dockerfile`. Документация: [demo-ui.md](demo-ui.md).
+
+Кэш каталога в Redis (`@Cacheable`): при смене DTO/сериализатора может понадобиться `FLUSHDB` на dev Redis.
 
 ## Профили
 
