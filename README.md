@@ -91,9 +91,20 @@ curl -s http://localhost:8080/actuator/health/readiness
 - OpenAPI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 - Seed: 3 категории, 4 товара (см. `V3__catalog_seed.sql`)
 
+## Cart API (шаг 2)
+
+Ключ корзины — `ownerId` (user id или session id в path):
+
+- `GET /api/v1/carts/{ownerId}`
+- `POST /api/v1/carts/{ownerId}/items` — добавить количество (merge)
+- `PUT /api/v1/carts/{ownerId}/items/{productId}` — задать количество
+- `DELETE /api/v1/carts/{ownerId}/items/{productId}`, `DELETE /api/v1/carts/{ownerId}`
+
+Данные в Redis (`market.cart.ttl`, по умолчанию 7 дней). Остаток проверяется по PostgreSQL (не по cache каталога).
+
 ## Чего ещё нет
 
-- Корзина, создание заказа
+- Создание заказа
 - Таблица outbox и публикация в топики
 - Mock payment, saga отмены, notification-service
 - JWT и rate limit

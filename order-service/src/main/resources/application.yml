@@ -50,3 +50,8 @@ management:
 info:
   app:
     description: Event-driven order platform. Order lifecycle is published to Kafka.
+
+market:
+  cart:
+    redis-key-prefix: cart
+    ttl: 7d
