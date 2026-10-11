@@ -55,3 +55,5 @@ market:
   cart:
     redis-key-prefix: cart
     ttl: 7d
+  order:
+    idempotency-ttl: 24h

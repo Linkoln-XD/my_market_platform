@@ -1,6 +1,7 @@
 package com.market.order.web;
 
 import com.market.order.cart.InsufficientStockException;
+import com.market.order.order.EmptyCartException;
 import com.market.order.catalog.CatalogConflictException;
 import com.market.order.catalog.CatalogNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,14 @@ public class CatalogExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Resource not found");
         problem.setType(URI.create("https://market.local/problems/not-found"));
+        return problem;
+    }
+
+    @ExceptionHandler(EmptyCartException.class)
+    ProblemDetail handleEmptyCart(EmptyCartException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Cart is empty");
+        problem.setType(URI.create("https://market.local/problems/empty-cart"));
         return problem;
     }
 

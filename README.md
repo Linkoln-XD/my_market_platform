@@ -102,9 +102,16 @@ curl -s http://localhost:8080/actuator/health/readiness
 
 Данные в Redis (`market.cart.ttl`, по умолчанию 7 дней). Остаток проверяется по PostgreSQL (не по cache каталога).
 
+## Orders API (шаг 3)
+
+- `POST /api/v1/orders` — body `{ "ownerId": "..." }`, header **`Idempotency-Key`** (8–128 символов)
+- Статус заказа: **`PENDING_PAYMENT`** (оплата только через Kafka, шаг 4+)
+- Корзина очищается после успешного создания; idempotency хранится в PostgreSQL (`ordering.idempotency_records`, TTL 24h)
+- Остаток **проверяется** по PG, **резерв** — позже через `catalog.events`
+
 ## Чего ещё нет
 
-- Создание заказа
+- Outbox / Kafka publish
 - Таблица outbox и публикация в топики
 - Mock payment, saga отмены, notification-service
 - JWT и rate limit

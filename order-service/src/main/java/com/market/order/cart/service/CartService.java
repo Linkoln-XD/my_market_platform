@@ -1,6 +1,7 @@
 package com.market.order.cart.service;
 
 import com.market.order.cart.model.CartDocument;
+import com.market.order.order.EmptyCartException;
 import com.market.order.cart.model.CartItemDocument;
 import com.market.order.cart.dto.AddCartItemRequest;
 import com.market.order.cart.dto.CartItemResponse;
@@ -63,6 +64,15 @@ public class CartService {
 
     public void clearCart(String ownerId) {
         cartRedisStore.delete(ownerId);
+    }
+
+    /** Used by checkout; cart lines are read from Redis, stock checks hit PostgreSQL. */
+    public CartDocument requireNonEmptyCart(String ownerId) {
+        CartDocument cart = cartRedisStore.find(ownerId).orElseGet(() -> emptyCart(ownerId));
+        if (cart.getItems().isEmpty()) {
+            throw new EmptyCartException("Cart is empty for owner: " + ownerId);
+        }
+        return cart;
     }
 
     private static CartDocument emptyCart(String ownerId) {
