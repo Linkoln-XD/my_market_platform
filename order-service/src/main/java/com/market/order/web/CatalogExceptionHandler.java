@@ -6,6 +6,9 @@ import com.market.order.order.InvalidOrderStateException;
 import com.market.order.order.OrderNotFoundException;
 import com.market.order.catalog.CatalogConflictException;
 import com.market.order.catalog.CatalogNotFoundException;
+import com.market.order.order.OrderOwnerMismatchException;
+import com.market.order.security.DemoTokenDisabledException;
+import com.market.order.security.RateLimitExceededException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.validation.FieldError;
@@ -56,6 +59,30 @@ public class CatalogExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problem.setTitle("Insufficient stock");
         problem.setType(URI.create("https://market.local/problems/insufficient-stock"));
+        return problem;
+    }
+
+    @ExceptionHandler(OrderOwnerMismatchException.class)
+    ProblemDetail handleOwnerMismatch(OrderOwnerMismatchException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Forbidden");
+        problem.setType(URI.create("https://market.local/problems/forbidden"));
+        return problem;
+    }
+
+    @ExceptionHandler(DemoTokenDisabledException.class)
+    ProblemDetail handleDemoTokenDisabled(DemoTokenDisabledException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Demo auth disabled");
+        problem.setType(URI.create("https://market.local/problems/demo-auth-disabled"));
+        return problem;
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    ProblemDetail handleRateLimit(RateLimitExceededException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        problem.setTitle("Rate limit exceeded");
+        problem.setType(URI.create("https://market.local/problems/rate-limit"));
         return problem;
     }
 

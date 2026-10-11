@@ -6,6 +6,9 @@ import com.market.events.order.OrderEventTypes;
 import com.market.events.topics.OrderTopics;
 import com.market.order.cart.dto.AddCartItemRequest;
 import com.market.order.order.dto.CreateOrderRequest;
+import com.market.order.security.MarketSecurityProperties;
+import com.market.order.support.AuthTestSupport;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -76,6 +79,12 @@ class OrderOutboxKafkaIT {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private JwtEncoder jwtEncoder;
+
+    @Autowired
+    private MarketSecurityProperties securityProperties;
+
     private KafkaConsumer<String, String> consumer;
     private final List<ConsumerRecord<String, String>> received = new CopyOnWriteArrayList<>();
 
@@ -108,7 +117,7 @@ class OrderOutboxKafkaIT {
                 new AddCartItemRequest(CLASSIC_BURGER_ID, 1),
                 JsonNode.class);
 
-        HttpHeaders headers = new HttpHeaders();
+        HttpHeaders headers = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, owner);
         headers.set("Idempotency-Key", "outbox-kafka-key-001");
         headers.setContentType(MediaType.APPLICATION_JSON);
 

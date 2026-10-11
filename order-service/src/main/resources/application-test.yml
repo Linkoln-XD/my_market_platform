@@ -9,3 +9,13 @@ market:
   outbox:
     poll-delay-ms: 500
     batch-size: 20
+  security:
+    jwt:
+      issuer: market-platform-test
+      secret: test-jwt-secret-at-least-32-characters-long
+    demo-token:
+      enabled: true
+      access-token-ttl: 1h
+    rate-limit:
+      create-order-limit: 1000
+      create-order-window: 1m

@@ -70,9 +70,13 @@ Optimistic locking на stock живёт в catalog consumer, не в синхр
 - Redis 7: корзина, кэш каталога, rate limit, ключи идемпотентности с коротким TTL (со следующих шагов).
 - `processed_events` и `outbox` появятся в схеме `ordering` на шагах 4–5.
 
-## Безопасность (реализация на шаге 8)
+## Безопасность (шаг 8)
 
-JWT resource server и demo-токены. Чтение каталога — публичное. Создание заказа — с аутентификацией и rate limit в Redis.
+- **JWT resource server** (HS256, issuer `market.security.jwt.issuer`).
+- **Demo issuer**: `POST /api/v1/auth/demo-token` (local/test, `market.security.demo-token.enabled`).
+- **Публично**: GET каталог, все операции корзины, health, OpenAPI.
+- **Authenticated**: `POST/PUT` каталог — роль **ADMIN**; `POST /api/v1/orders` и cancel — любой JWT; `ownerId` в body = `sub` токена.
+- **Rate limit**: Redis, `POST /api/v1/orders` — `market.security.rate-limit.*` (по умолчанию 30/min на subject).
 
 ## Профили
 

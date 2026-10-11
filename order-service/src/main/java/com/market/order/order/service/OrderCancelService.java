@@ -1,6 +1,7 @@
 package com.market.order.order.service;
 
 import com.market.order.order.InvalidOrderStateException;
+import com.market.order.order.OrderOwnerMismatchException;
 import com.market.order.order.OrderNotFoundException;
 import com.market.order.order.OrderStatus;
 import com.market.order.order.domain.OrderEntity;
@@ -27,9 +28,12 @@ public class OrderCancelService {
     private final OrderMapper orderMapper;
 
     @Transactional
-    public OrderResponse cancelOrder(UUID orderId, CancelOrderRequest request) {
+    public OrderResponse cancelOrder(UUID orderId, CancelOrderRequest request, String authenticatedSubject) {
         OrderEntity order = orderRepository.findWithItemsById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (!order.getOwnerId().equals(authenticatedSubject)) {
+            throw new OrderOwnerMismatchException("Only the order owner can cancel this order");
+        }
         if (!CANCELLABLE.contains(order.getStatus())) {
             throw new InvalidOrderStateException(
                     "Order " + orderId + " cannot be cancelled from status " + order.getStatus());

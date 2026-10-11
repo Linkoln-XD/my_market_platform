@@ -11,3 +11,8 @@ spring:
       port: ${REDIS_PORT:6379}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+market:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-me-local-demo-secret-min-32-chars!!}

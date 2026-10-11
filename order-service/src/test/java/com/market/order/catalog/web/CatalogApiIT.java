@@ -2,6 +2,9 @@ package com.market.order.catalog.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.market.order.catalog.dto.UpdateProductRequest;
+import com.market.order.security.MarketSecurityProperties;
+import com.market.order.support.AuthTestSupport;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 import com.market.order.catalog.dto.UpdateStockRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +14,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +62,12 @@ class CatalogApiIT {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
+    @Autowired
+    private JwtEncoder jwtEncoder;
+
+    @Autowired
+    private MarketSecurityProperties securityProperties;
+
     @Test
     @DisplayName("seed data is exposed via catalog REST API")
     void seedDataIsAvailable() {
@@ -97,8 +107,10 @@ class CatalogApiIT {
                 799,
                 "USD",
                 true);
+        HttpHeaders adminHeaders = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, "catalog-admin", java.util.List.of("ADMIN"));
+        adminHeaders.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         ResponseEntity<JsonNode> updated = restTemplate.exchange(
-                productUrl, HttpMethod.PUT, new HttpEntity<>(update), JsonNode.class);
+                productUrl, HttpMethod.PUT, new HttpEntity<>(update, adminHeaders), JsonNode.class);
         assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(updated.getBody().path("name").asText()).isEqualTo("Veggie Burger (updated)");
 
@@ -114,10 +126,12 @@ class CatalogApiIT {
     @DisplayName("stock can be adjusted through the API")
     void stockCanBeAdjusted() {
         String stockUrl = "/api/v1/products/" + CLASSIC_BURGER_ID + "/stock";
+        HttpHeaders adminHeaders = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, "stock-admin", java.util.List.of("ADMIN"));
+        adminHeaders.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         ResponseEntity<JsonNode> response = restTemplate.exchange(
                 stockUrl,
                 HttpMethod.PUT,
-                new HttpEntity<>(new UpdateStockRequest(42)),
+                new HttpEntity<>(new UpdateStockRequest(42), adminHeaders),
                 JsonNode.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

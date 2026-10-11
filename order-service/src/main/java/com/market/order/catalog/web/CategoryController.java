@@ -22,7 +22,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor
-@Tag(name = "Categories", description = "Product categories (public read; writes for admin until JWT in step 8)")
+@Tag(name = "Categories", description = "Product categories (public read; writes require JWT role ADMIN)")
 public class CategoryController {
 
     private final CategoryService categoryService;

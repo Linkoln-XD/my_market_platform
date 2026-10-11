@@ -2,7 +2,7 @@
 
 Учебный, но production-like backend маркетплейса / доставки еды. Жизненный цикл заказа идёт через Kafka: transactional outbox, идемпотентные consumer-ы, компенсации при отмене.
 
-Реализованы шаги 0–7: каталог, корзина, заказы, outbox/Kafka, mock payment, cancel saga, notification consumer.
+Реализованы шаги 0–8: каталог, корзина, заказы, outbox/Kafka, mock payment, cancel saga, notification, JWT + rate limit.
 
 ## Стек
 
@@ -144,7 +144,28 @@ curl -s http://localhost:8080/actuator/health/readiness
 - Идempotency: `notification.processed_events` (`notification-order-events`, `event_id`)
 - Health: `http://localhost:8081/actuator/health` (`db`, `kafka`)
 
+## Security (шаг 8)
+
+- **JWT** (HS256): `Authorization: Bearer …`
+- **Demo token** (local/test): `POST /api/v1/auth/demo-token` — body `{ "subject": "user-1", "roles": ["USER"] }` (для админ-записей в каталог — `["ADMIN"]`)
+- **Публично**: GET `/api/v1/categories`, `/api/v1/products`, корзина
+- **Заказы**: JWT обязателен; `ownerId` в `POST /api/v1/orders` должен совпадать с `subject` токена
+- **Rate limit**: Redis на создание заказа (по умолчанию **30/min** на пользователя) → **429**
+- Секрет: `JWT_SECRET` в `.env` (см. `.env.example`)
+
+Пример checkout:
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/demo-token \
+  -H 'Content-Type: application/json' \
+  -d '{"subject":"demo-user","roles":["USER"]}' | jq -r .accessToken)
+curl -s -X POST http://localhost:8080/api/v1/orders \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Idempotency-Key: demo-checkout-001' \
+  -H 'Content-Type: application/json' \
+  -d '{"ownerId":"demo-user"}'
+```
+
 ## Чего ещё нет
 
-- JWT и rate limit (шаг 8)
 - Полная observability / E2E док (шаг 9)

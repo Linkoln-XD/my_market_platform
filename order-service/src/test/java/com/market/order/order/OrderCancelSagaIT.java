@@ -12,6 +12,9 @@ import com.market.order.catalog.repository.StockRepository;
 import com.market.order.order.dto.CancelOrderRequest;
 import com.market.order.order.dto.CreateOrderRequest;
 import com.market.order.order.repository.OrderRepository;
+import com.market.order.security.MarketSecurityProperties;
+import com.market.order.support.AuthTestSupport;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -78,6 +81,12 @@ class OrderCancelSagaIT {
     @Autowired
     private StockRepository stockRepository;
 
+    @Autowired
+    private JwtEncoder jwtEncoder;
+
+    @Autowired
+    private MarketSecurityProperties securityProperties;
+
     private KafkaConsumer<String, String> catalogConsumer;
     private KafkaConsumer<String, String> paymentConsumer;
     private final List<ConsumerRecord<String, String>> catalogRecords = new CopyOnWriteArrayList<>();
@@ -114,9 +123,11 @@ class OrderCancelSagaIT {
                 .untilAsserted(() -> assertThat(stockRepository.findById(CLASSIC_BURGER_ID).orElseThrow().getQuantity())
                         .isEqualTo(stockBefore - 1));
 
-        ResponseEntity<JsonNode> cancelled = restTemplate.postForEntity(
+        HttpHeaders cancelHeaders = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, "cancel-saga-paid");
+        ResponseEntity<JsonNode> cancelled = restTemplate.exchange(
                 "/api/v1/orders/" + orderId + "/cancel",
-                new CancelOrderRequest("Changed mind"),
+                HttpMethod.POST,
+                new HttpEntity<>(new CancelOrderRequest("Changed mind"), cancelHeaders),
                 JsonNode.class);
 
         assertThat(cancelled.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -145,9 +156,11 @@ class OrderCancelSagaIT {
         int stockBefore = stockRepository.findById(CLASSIC_BURGER_ID).orElseThrow().getQuantity();
         UUID orderId = createPendingOrder("cancel-saga-pending", "cancel-saga-key-pending");
 
-        ResponseEntity<JsonNode> cancelled = restTemplate.postForEntity(
+        HttpHeaders cancelHeaders = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, "cancel-saga-pending");
+        ResponseEntity<JsonNode> cancelled = restTemplate.exchange(
                 "/api/v1/orders/" + orderId + "/cancel",
-                new CancelOrderRequest("No longer needed"),
+                HttpMethod.POST,
+                new HttpEntity<>(new CancelOrderRequest("No longer needed"), cancelHeaders),
                 JsonNode.class);
 
         assertThat(cancelled.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -171,7 +184,7 @@ class OrderCancelSagaIT {
                 new AddCartItemRequest(CLASSIC_BURGER_ID, 1),
                 JsonNode.class);
 
-        HttpHeaders headers = new HttpHeaders();
+        HttpHeaders headers = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, owner);
         headers.set("Idempotency-Key", idempotencyKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
 

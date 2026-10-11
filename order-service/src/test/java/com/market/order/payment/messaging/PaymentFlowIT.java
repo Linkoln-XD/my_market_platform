@@ -7,6 +7,9 @@ import com.market.events.topics.OrderTopics;
 import com.market.events.topics.PaymentTopics;
 import com.market.order.cart.dto.AddCartItemRequest;
 import com.market.order.order.dto.CreateOrderRequest;
+import com.market.order.security.MarketSecurityProperties;
+import com.market.order.support.AuthTestSupport;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 import com.market.order.order.repository.OrderRepository;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -71,6 +74,12 @@ class PaymentFlowIT {
     @Autowired
     private OrderRepository orderRepository;
 
+    @Autowired
+    private JwtEncoder jwtEncoder;
+
+    @Autowired
+    private MarketSecurityProperties securityProperties;
+
     private KafkaConsumer<String, String> paymentConsumer;
     private KafkaConsumer<String, String> orderConsumer;
     private final List<ConsumerRecord<String, String>> paymentRecords = new CopyOnWriteArrayList<>();
@@ -105,7 +114,7 @@ class PaymentFlowIT {
                 new AddCartItemRequest(CLASSIC_BURGER_ID, 1),
                 JsonNode.class);
 
-        HttpHeaders headers = new HttpHeaders();
+        HttpHeaders headers = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, owner);
         headers.set("Idempotency-Key", "payment-flow-key-001");
         headers.setContentType(MediaType.APPLICATION_JSON);
 

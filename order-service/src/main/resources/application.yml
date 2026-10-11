@@ -67,3 +67,13 @@ market:
   outbox:
     poll-delay-ms: 1000
     batch-size: 20
+  security:
+    jwt:
+      issuer: market-platform
+      secret: ${JWT_SECRET:change-me-local-demo-secret-min-32-chars!!}
+    demo-token:
+      enabled: true
+      access-token-ttl: 1h
+    rate-limit:
+      create-order-limit: 30
+      create-order-window: 1m

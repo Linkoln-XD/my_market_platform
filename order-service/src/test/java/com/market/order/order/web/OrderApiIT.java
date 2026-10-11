@@ -3,6 +3,9 @@ package com.market.order.order.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.market.order.cart.dto.AddCartItemRequest;
 import com.market.order.order.dto.CreateOrderRequest;
+import com.market.order.security.MarketSecurityProperties;
+import com.market.order.support.AuthTestSupport;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,13 +61,19 @@ class OrderApiIT {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @Autowired
+    private JwtEncoder jwtEncoder;
+
+    @Autowired
+    private MarketSecurityProperties securityProperties;
+
     @Test
     @DisplayName("POST /orders creates PENDING_PAYMENT order from cart and clears Redis cart")
     void createOrderFromCart() {
         String owner = "checkout-user-1";
         seedCart(owner, 2);
 
-        HttpHeaders headers = new HttpHeaders();
+        HttpHeaders headers = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, owner);
         headers.set("Idempotency-Key", "order-create-key-001");
         headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -104,7 +113,7 @@ class OrderApiIT {
             List<Callable<String>> tasks = new ArrayList<>();
             for (int i = 0; i < 4; i++) {
                 tasks.add(() -> {
-                    HttpHeaders headers = new HttpHeaders();
+                    HttpHeaders headers = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, owner);
                     headers.set("Idempotency-Key", idempotencyKey);
                     headers.setContentType(MediaType.APPLICATION_JSON);
                     ResponseEntity<JsonNode> response = restTemplate.exchange(
@@ -134,14 +143,15 @@ class OrderApiIT {
     @Test
     @DisplayName("empty cart returns 400 on checkout")
     void emptyCartRejected() {
-        HttpHeaders headers = new HttpHeaders();
+        String owner = "empty-cart-owner";
+        HttpHeaders headers = AuthTestSupport.bearerHeaders(jwtEncoder, securityProperties, owner);
         headers.set("Idempotency-Key", "empty-cart-key-001");
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         ResponseEntity<JsonNode> response = restTemplate.exchange(
                 "/api/v1/orders",
                 HttpMethod.POST,
-                new HttpEntity<>(new CreateOrderRequest("empty-cart-owner"), headers),
+                new HttpEntity<>(new CreateOrderRequest(owner), headers),
                 JsonNode.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
