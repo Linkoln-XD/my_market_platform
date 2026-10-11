@@ -118,9 +118,15 @@ curl -s http://localhost:8080/actuator/health/readiness
 
 Идempotency: `ordering.processed_events` (`consumer_name`, `event_id`).
 
+## Cancel saga (шаг 6)
+
+- `POST /api/v1/orders/{orderId}/cancel` — outbox **`OrderCancelled`** → `order.events`
+- Оплаченный заказ: **`StockReleased`** на `catalog.events`, refund stub **`PaymentRefundRequested`** → **`PaymentRefunded`** на `payment.events`
+- Диаграмма: [docs/saga-order-flow.md](docs/saga-order-flow.md)
+
 ## Чего ещё нет
 
-- Saga отмены
+- Notification consumer
 - Таблица outbox и публикация в топики
 - Mock payment, saga отмены, notification-service
 - JWT и rate limit

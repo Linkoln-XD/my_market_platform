@@ -2,6 +2,9 @@ package com.market.order.outbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.market.events.order.OrderCancelledEvent;
+import com.market.events.order.OrderCancelledLinePayload;
+import com.market.events.order.OrderCancelledPayload;
 import com.market.events.order.OrderCreatedEvent;
 import com.market.events.order.OrderCreatedPayload;
 import com.market.events.order.OrderEventTypes;
@@ -75,6 +78,34 @@ public class OutboxService {
         row.setAggregateType(AGGREGATE_ORDER);
         row.setAggregateId(order.getId());
         row.setEventType(OrderEventTypes.ORDER_PAID);
+        row.setTopic(OrderTopics.ORDER_EVENTS);
+        row.setEventId(eventId);
+        row.setOccurredAt(occurredAt);
+        row.setPayload(writeJson(event));
+        outboxEventRepository.save(row);
+    }
+
+    public void enqueueOrderCancelled(OrderEntity order, String previousStatus, String reason) {
+        UUID eventId = UUID.randomUUID();
+        Instant occurredAt = Instant.now();
+
+        OrderCancelledPayload payload = new OrderCancelledPayload(
+                order.getId(),
+                order.getOwnerId(),
+                previousStatus,
+                reason,
+                order.getItems().stream()
+                        .map(item -> new OrderCancelledLinePayload(
+                                item.getProductId(), item.getSku(), item.getQuantity()))
+                        .toList());
+
+        OrderCancelledEvent event = new OrderCancelledEvent(
+                eventId, occurredAt, OrderEventTypes.ORDER_CANCELLED, payload);
+
+        OutboxEventEntity row = new OutboxEventEntity();
+        row.setAggregateType(AGGREGATE_ORDER);
+        row.setAggregateId(order.getId());
+        row.setEventType(OrderEventTypes.ORDER_CANCELLED);
         row.setTopic(OrderTopics.ORDER_EVENTS);
         row.setEventId(eventId);
         row.setOccurredAt(occurredAt);

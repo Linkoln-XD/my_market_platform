@@ -2,6 +2,8 @@ package com.market.order.web;
 
 import com.market.order.cart.InsufficientStockException;
 import com.market.order.order.EmptyCartException;
+import com.market.order.order.InvalidOrderStateException;
+import com.market.order.order.OrderNotFoundException;
 import com.market.order.catalog.CatalogConflictException;
 import com.market.order.catalog.CatalogNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,22 @@ public class CatalogExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Resource not found");
         problem.setType(URI.create("https://market.local/problems/not-found"));
+        return problem;
+    }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    ProblemDetail handleOrderNotFound(OrderNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Order not found");
+        problem.setType(URI.create("https://market.local/problems/order-not-found"));
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidOrderStateException.class)
+    ProblemDetail handleInvalidOrderState(InvalidOrderStateException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Invalid order state");
+        problem.setType(URI.create("https://market.local/problems/invalid-order-state"));
         return problem;
     }
 

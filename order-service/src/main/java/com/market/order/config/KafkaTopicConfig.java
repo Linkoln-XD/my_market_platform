@@ -1,5 +1,6 @@
 package com.market.order.config;
 
+import com.market.events.topics.CatalogTopics;
 import com.market.events.topics.OrderTopics;
 import com.market.events.topics.PaymentTopics;
 import com.market.order.outbox.OutboxProperties;
@@ -25,6 +26,14 @@ public class KafkaTopicConfig {
     @Bean
     NewTopic paymentEventsTopic() {
         return TopicBuilder.name(PaymentTopics.PAYMENT_EVENTS)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    NewTopic catalogEventsTopic() {
+        return TopicBuilder.name(CatalogTopics.CATALOG_EVENTS)
                 .partitions(3)
                 .replicas(1)
                 .build();
