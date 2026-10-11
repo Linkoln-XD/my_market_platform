@@ -4,3 +4,8 @@ spring:
   kafka:
     admin:
       fail-fast: true
+
+market:
+  outbox:
+    poll-delay-ms: 500
+    batch-size: 20

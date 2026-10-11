@@ -14,6 +14,7 @@ import com.market.order.order.dto.OrderResponse;
 import com.market.order.order.mapper.OrderMapper;
 import com.market.order.order.repository.IdempotencyRecordRepository;
 import com.market.order.order.repository.OrderRepository;
+import com.market.order.outbox.OutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,8 @@ class OrderServiceTest {
     private OrderMapper orderMapper;
     @Mock
     private TransactionAdvisoryLock transactionAdvisoryLock;
+    @Mock
+    private OutboxService outboxService;
 
     private ObjectMapper objectMapper;
     private OrderService orderService;
@@ -68,7 +71,8 @@ class OrderServiceTest {
                 orderMapper,
                 objectMapper,
                 new OrderProperties(Duration.ofHours(24)),
-                transactionAdvisoryLock);
+                transactionAdvisoryLock,
+                outboxService);
     }
 
     @Test
@@ -126,6 +130,7 @@ class OrderServiceTest {
         assertThat(orderCaptor.getValue().getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
         assertThat(orderCaptor.getValue().getSubtotalCents()).isEqualTo(1000);
         verify(catalogAvailabilityService).requireAvailableProduct(productId, 2);
+        verify(outboxService).enqueueOrderCreated(orderCaptor.getValue());
         verify(cartService).clearCart(OWNER);
         verify(idempotencyRecordRepository).save(any(IdempotencyRecordEntity.class));
     }

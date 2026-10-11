@@ -96,6 +96,8 @@ class OrderServiceApplicationIT {
                 assertThat(history.getString("version")).isEqualTo("3");
                 assertThat(history.next()).isTrue();
                 assertThat(history.getString("version")).isEqualTo("4");
+                assertThat(history.next()).isTrue();
+                assertThat(history.getString("version")).isEqualTo("5");
                 assertThat(history.next()).isFalse();
             }
             try (ResultSet products = statement.executeQuery("select count(*) from catalog.products")) {

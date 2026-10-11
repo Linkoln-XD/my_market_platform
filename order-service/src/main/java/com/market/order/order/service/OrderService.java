@@ -17,6 +17,7 @@ import com.market.order.order.dto.OrderResponse;
 import com.market.order.order.mapper.OrderMapper;
 import com.market.order.order.repository.IdempotencyRecordRepository;
 import com.market.order.order.repository.OrderRepository;
+import com.market.order.outbox.OutboxService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class OrderService {
     private final ObjectMapper objectMapper;
     private final OrderProperties orderProperties;
     private final TransactionAdvisoryLock transactionAdvisoryLock;
+    private final OutboxService outboxService;
 
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request, String idempotencyKey) {
@@ -73,6 +75,7 @@ public class OrderService {
         }
 
         OrderEntity saved = orderRepository.save(order);
+        outboxService.enqueueOrderCreated(saved);
         OrderResponse response = orderMapper.toResponse(saved);
 
         IdempotencyRecordEntity record = new IdempotencyRecordEntity();

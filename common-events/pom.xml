@@ -12,5 +12,12 @@
 
     <artifactId>common-events</artifactId>
     <name>Common Events</name>
-    <description>Shared Kafka event contracts. Payload types arrive with the outbox publisher.</description>
+    <description>Shared Kafka event contracts for order, payment, and catalog flows.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+    </dependencies>
 </project>

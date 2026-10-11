@@ -3,6 +3,7 @@ package com.market.order;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Single deployable for the order flow until notification-service is split out in step 7.
@@ -13,6 +14,7 @@ import org.springframework.cache.annotation.EnableCaching;
  */
 @SpringBootApplication
 @EnableCaching
+@EnableScheduling
 public class OrderServiceApplication {
 
     public static void main(String[] args) {
