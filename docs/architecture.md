@@ -18,7 +18,7 @@ Maven multi-module, Java 21, Spring Boot 3.5.16.
 |--------|-------------|----------------|
 | `common-events` | Общий jar контрактов Kafka. Типы событий — с шага 4 | Контракты растут вместе с топиками |
 | `order-service` | Единственный deployable: каталог, корзина, заказ, outbox, saga, mock payment | Mock payment остаётся здесь |
-| `notification-service` | Ещё нет | Отдельный deployable на шаге 7, consumer только `order.events` |
+| `notification-service` | Есть (8081) | Consumer только `order.events`, схема `notification`, DLQ `order.events.dlq` |
 
 Каталог хранится в `order-service` (схема `catalog`). Это одна БД и один процесс, но граница резерва stock — Kafka consumer, а не вызов метода и не `@EventListener`.
 

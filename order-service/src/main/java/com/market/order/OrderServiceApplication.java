@@ -7,7 +7,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Single deployable for the order flow until notification-service is split out in step 7.
+ * Order REST API, outbox, and Kafka consumers for payment and catalog stock.
  *
  * <p>Catalog rows live in this process (schema {@code catalog}). Stock reservation still
  * crosses Kafka on {@code catalog.events}: a listener reserves or releases stock.

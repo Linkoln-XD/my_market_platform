@@ -2,7 +2,7 @@
 
 Учебный, но production-like backend маркетплейса / доставки еды. Жизненный цикл заказа идёт через Kafka: transactional outbox, идемпотентные consumer-ы, компенсации при отмене.
 
-Сейчас это скелет (шаг 0). Каталога, корзины, заказов и публикации событий ещё нет.
+Реализованы шаги 0–7: каталог, корзина, заказы, outbox/Kafka, mock payment, cancel saga, notification consumer.
 
 ## Стек
 
@@ -15,9 +15,9 @@
 
 Основной поток заказа публикуется в Kafka. Профиль `local` подключается к брокеру из Compose и **не стартует**, если брокер недоступен (`spring.kafka.admin.fail-fast=true`). Профиль `test` поднимает Kafka через Testcontainers. In-memory брокера нет.
 
-Целевая цепочка (ещё не реализована):
+Основная цепочка:
 
-`POST /orders` → PostgreSQL + `outbox` → `order.events` → mock payment → `payment.events` → статус заказа → `order.events` → notification consumer.
+`POST /orders` → PostgreSQL + `outbox` → `order.events` → mock payment → `payment.events` → статус заказа → `order.events` → **notification-service** (лог + email stub).
 
 Топики: `order.events`, `payment.events`, `catalog.events` (резерв и возврат stock). Решения и роли producer/consumer — в [docs/architecture.md](docs/architecture.md).
 
@@ -40,12 +40,13 @@ flowchart LR
   kafka --> notification
 ```
 
-`notification-service` появится на шаге 7. До этого deployable один: `order-service`. Контракты событий живут в модуле `common-events`.
+Deployable: **`order-service`** (8080), **`notification-service`** (8081). Контракты событий — модуль `common-events`.
 
 | Модуль | Сейчас |
 |--------|--------|
-| `common-events` | Общий jar. Классы событий — с шага 4 |
-| `order-service` | Spring Boot: health, Flyway, схемы `catalog` и `ordering` |
+| `common-events` | События order / payment / catalog |
+| `order-service` | REST, outbox, Kafka consumers payment/stock |
+| `notification-service` | Только Kafka consumer на `order.events` |
 
 ## Требования
 
@@ -62,7 +63,14 @@ docker compose up -d
 ./mvnw -pl order-service spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Проверка:
+Notification (второй терминал, тот же Compose):
+
+```bash
+./mvnw -pl notification-service -am -DskipTests install
+./mvnw -pl notification-service spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Проверка order-service:
 
 ```bash
 curl -s http://localhost:8080/actuator/health
@@ -124,9 +132,19 @@ curl -s http://localhost:8080/actuator/health/readiness
 - Оплаченный заказ: **`StockReleased`** на `catalog.events`, refund stub **`PaymentRefundRequested`** → **`PaymentRefunded`** на `payment.events`
 - Диаграмма: [docs/saga-order-flow.md](docs/saga-order-flow.md)
 
+## Notification (шаг 7)
+
+| Топик | Producer | Consumer |
+|-------|----------|----------|
+| `order.events` | Outbox (`OrderCreated`, `OrderPaid`, `OrderCancelled`) | `notification-service` (`OrderEventNotificationConsumer`) |
+| `order.events.dlq` | Spring Kafka DLT после retry | — |
+
+- Схема PostgreSQL **`notification`**: `delivered_notifications`, `processed_events`
+- Доставка: лог + **EMAIL_STUB** (без HTTP к order-service)
+- Идempotency: `notification.processed_events` (`notification-order-events`, `event_id`)
+- Health: `http://localhost:8081/actuator/health` (`db`, `kafka`)
+
 ## Чего ещё нет
 
-- Notification consumer
-- Таблица outbox и публикация в топики
-- Mock payment, saga отмены, notification-service
-- JWT и rate limit
+- JWT и rate limit (шаг 8)
+- Полная observability / E2E док (шаг 9)
