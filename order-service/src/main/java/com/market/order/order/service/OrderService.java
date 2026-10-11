@@ -17,6 +17,7 @@ import com.market.order.order.dto.OrderResponse;
 import com.market.order.order.mapper.OrderMapper;
 import com.market.order.order.repository.IdempotencyRecordRepository;
 import com.market.order.order.repository.OrderRepository;
+import com.market.order.observability.OrderBusinessMetrics;
 import com.market.order.outbox.OutboxService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -43,6 +44,7 @@ public class OrderService {
     private final OrderProperties orderProperties;
     private final TransactionAdvisoryLock transactionAdvisoryLock;
     private final OutboxService outboxService;
+    private final OrderBusinessMetrics orderBusinessMetrics;
 
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request, String idempotencyKey) {
@@ -95,6 +97,7 @@ public class OrderService {
         }
 
         cartService.clearCart(request.ownerId());
+        orderBusinessMetrics.recordOrderCreated();
         return response;
     }
 

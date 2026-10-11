@@ -14,6 +14,7 @@ import com.market.order.order.dto.OrderResponse;
 import com.market.order.order.mapper.OrderMapper;
 import com.market.order.order.repository.IdempotencyRecordRepository;
 import com.market.order.order.repository.OrderRepository;
+import com.market.order.observability.OrderBusinessMetrics;
 import com.market.order.outbox.OutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -56,6 +57,8 @@ class OrderServiceTest {
     private TransactionAdvisoryLock transactionAdvisoryLock;
     @Mock
     private OutboxService outboxService;
+    @Mock
+    private OrderBusinessMetrics orderBusinessMetrics;
 
     private ObjectMapper objectMapper;
     private OrderService orderService;
@@ -72,7 +75,8 @@ class OrderServiceTest {
                 objectMapper,
                 new OrderProperties(Duration.ofHours(24)),
                 transactionAdvisoryLock,
-                outboxService);
+                outboxService,
+                orderBusinessMetrics);
     }
 
     @Test

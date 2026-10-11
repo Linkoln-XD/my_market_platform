@@ -1,6 +1,7 @@
 package com.market.notification.service;
 
 import com.market.notification.domain.DeliveredNotificationEntity;
+import com.market.notification.observability.NotificationBusinessMetrics;
 import com.market.notification.repository.DeliveredNotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class NotificationDispatchService {
             "OrderCancelled");
 
     private final DeliveredNotificationRepository deliveredNotificationRepository;
+    private final NotificationBusinessMetrics notificationBusinessMetrics;
 
     @Transactional
     public void dispatch(UUID eventId, UUID orderId, String eventType) {
@@ -41,5 +43,6 @@ public class NotificationDispatchService {
         row.setChannel("LOG_EMAIL_STUB");
         row.setMessage(logMessage + " | " + emailStub);
         deliveredNotificationRepository.save(row);
+        notificationBusinessMetrics.recordDelivered(eventType);
     }
 }

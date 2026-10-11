@@ -78,6 +78,15 @@ Optimistic locking на stock живёт в catalog consumer, не в синхр
 - **Authenticated**: `POST/PUT` каталог — роль **ADMIN**; `POST /api/v1/orders` и cancel — любой JWT; `ownerId` в body = `sub` токена.
 - **Rate limit**: Redis, `POST /api/v1/orders` — `market.security.rate-limit.*` (по умолчанию 30/min на subject).
 
+## Observability (шаг 9)
+
+- **Micrometer + Prometheus**: `/actuator/prometheus`, `/actuator/metrics` (local — без JWT; в prod вынести за ingress/mTLS).
+- **Бизнес-метрики**: `market.orders.created`, `market.notifications.delivered` (tag `event_type`).
+- **Корреляция**: `X-Request-Id` → MDC `requestId`; Kafka consumer notification — MDC `eventId`.
+- **Логи**: `logback-spring.xml`, поля `[req:… evt:…]` в консоли.
+- **Prometheus в Compose**: профиль `observability`, конфиг `infra/prometheus/prometheus.yml` (scrape `host.docker.internal:8080/8081`).
+- **E2E сценарий**: [e2e-local-flow.md](e2e-local-flow.md).
+
 ## Профили
 
 | Профиль | Инфраструктура |

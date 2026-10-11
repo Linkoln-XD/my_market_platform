@@ -8,6 +8,7 @@ import com.market.notification.service.NotificationDispatchService;
 import com.market.notification.service.ProcessedEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,12 +41,17 @@ public class OrderEventNotificationConsumer {
         }
 
         UUID eventId = UUID.fromString(root.path("eventId").asText());
-        if (!processedEventService.markProcessedIfAbsent(notificationProperties.consumerName(), eventId)) {
-            log.debug("Skip duplicate notification for event {}", eventId);
-            return;
-        }
+        MDC.put("eventId", eventId.toString());
+        try {
+            if (!processedEventService.markProcessedIfAbsent(notificationProperties.consumerName(), eventId)) {
+                log.debug("Skip duplicate notification for event {}", eventId);
+                return;
+            }
 
-        UUID orderId = UUID.fromString(root.path("payload").path("orderId").asText());
-        notificationDispatchService.dispatch(eventId, orderId, eventType);
+            UUID orderId = UUID.fromString(root.path("payload").path("orderId").asText());
+            notificationDispatchService.dispatch(eventId, orderId, eventType);
+        } finally {
+            MDC.remove("eventId");
+        }
     }
 }

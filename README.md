@@ -2,7 +2,7 @@
 
 Учебный, но production-like backend маркетплейса / доставки еды. Жизненный цикл заказа идёт через Kafka: transactional outbox, идемпотентные consumer-ы, компенсации при отмене.
 
-Реализованы шаги 0–8: каталог, корзина, заказы, outbox/Kafka, mock payment, cancel saga, notification, JWT + rate limit.
+Реализованы шаги 0–9: полный event-driven поток, security, observability (Prometheus) и E2E-док.
 
 ## Стек
 
@@ -166,6 +166,15 @@ curl -s -X POST http://localhost:8080/api/v1/orders \
   -d '{"ownerId":"demo-user"}'
 ```
 
-## Чего ещё нет
+## Observability (шаг 9)
 
-- Полная observability / E2E док (шаг 9)
+| Endpoint | Сервис |
+|----------|--------|
+| `/actuator/prometheus` | order **8080**, notification **8081** |
+| `/actuator/metrics` | JSON-имена метрик |
+| `/actuator/health` | readiness: db, redis, kafka |
+
+- **Prometheus** (опционально): `docker compose --profile observability up -d` → http://localhost:9090
+- **Метрики**: `market_orders_created_total`, `market_notifications_delivered_total`
+- **Трейс в логах**: заголовок `X-Request-Id`; в консоли `[req:… evt:…]`
+- **E2E вручную**: [docs/e2e-local-flow.md](docs/e2e-local-flow.md)

@@ -45,5 +45,16 @@ services:
       retries: 18
       start_period: 20s
 
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v3.2.1
+    container_name: market-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres-data:
