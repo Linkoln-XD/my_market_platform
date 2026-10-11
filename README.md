@@ -83,9 +83,17 @@ curl -s http://localhost:8080/actuator/health/readiness
 
 Нужен запущенный Docker: интеграционные тесты поднимают Postgres, Redis и Kafka через Testcontainers.
 
+## Catalog API (шаг 1)
+
+- `GET /api/v1/categories`, `GET /api/v1/categories/{id}`
+- `GET /api/v1/products`, `GET /api/v1/products/{id}` (фильтр `categoryId`, пагинация)
+- `POST /api/v1/categories`, `POST /api/v1/products`, `PUT /api/v1/products/{id}`, `PUT /api/v1/products/{id}/stock`
+- OpenAPI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- Seed: 3 категории, 4 товара (см. `V3__catalog_seed.sql`)
+
 ## Чего ещё нет
 
-- CRUD каталога, кэш, корзина, создание заказа
+- Корзина, создание заказа
 - Таблица outbox и публикация в топики
 - Mock payment, saga отмены, notification-service
 - JWT и rate limit

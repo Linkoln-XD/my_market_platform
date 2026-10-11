@@ -1,6 +1,11 @@
 spring:
   application:
     name: order-service
+  cache:
+    type: redis
+    redis:
+      time-to-live: 5m
+      cache-null-values: false
   jpa:
     open-in-view: false
     hibernate:

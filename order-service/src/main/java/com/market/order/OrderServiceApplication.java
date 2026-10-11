@@ -2,6 +2,7 @@ package com.market.order;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
 
 /**
  * Single deployable for the order flow until notification-service is split out in step 7.
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * That boundary stays a Kafka consumer, including while both sides share this JVM.
  */
 @SpringBootApplication
+@EnableCaching
 public class OrderServiceApplication {
 
     public static void main(String[] args) {

@@ -81,16 +81,24 @@ class OrderServiceApplicationIT {
     }
 
     @Test
-    @DisplayName("flyway applies the baseline schemas")
-    void flywayAppliesBaselineSchemas() throws Exception {
+    @DisplayName("flyway applies catalog migrations including seed data")
+    void flywayAppliesCatalogMigrations() throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
             try (ResultSet history = statement.executeQuery(
-                    "select version, success from flyway_schema_history")) {
+                    "select version, success from flyway_schema_history order by installed_rank")) {
                 assertThat(history.next()).isTrue();
                 assertThat(history.getString("version")).isEqualTo("1");
                 assertThat(history.getBoolean("success")).isTrue();
+                assertThat(history.next()).isTrue();
+                assertThat(history.getString("version")).isEqualTo("2");
+                assertThat(history.next()).isTrue();
+                assertThat(history.getString("version")).isEqualTo("3");
                 assertThat(history.next()).isFalse();
+            }
+            try (ResultSet products = statement.executeQuery("select count(*) from catalog.products")) {
+                assertThat(products.next()).isTrue();
+                assertThat(products.getInt(1)).isEqualTo(4);
             }
             try (ResultSet schemas = statement.executeQuery(
                     """
