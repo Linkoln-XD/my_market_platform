@@ -1,0 +1,6 @@
+spring:
+  main:
+    banner-mode: off
+  kafka:
+    admin:
+      fail-fast: true
